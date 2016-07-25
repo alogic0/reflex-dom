@@ -182,22 +182,27 @@ holdOnStartup a0 ma = do
 
 mainWidget :: Widget Spider (Gui Spider (WithWebView SpiderHost) (HostFrame Spider)) () -> IO ()
 mainWidget w = runWebGUI $ \webView -> do
-  Just doc <- liftM (fmap castToHTMLDocument) $ webViewGetDomDocument webView
+  Just doc1 <- webViewGetDomDocument webView
+  doc <- liftIO $ castToHTMLDocument doc1
   Just body <- getBody doc
   attachWidget body webView w
 
 mainWidgetWithHead :: Widget Spider (Gui Spider (WithWebView SpiderHost) (HostFrame Spider)) () -> Widget Spider (Gui Spider (WithWebView SpiderHost) (HostFrame Spider)) () -> IO ()
 mainWidgetWithHead h b = runWebGUI $ \webView -> do
-  Just doc <- liftM (fmap castToHTMLDocument) $ webViewGetDomDocument webView
-  Just headElement <- liftM (fmap castToHTMLElement) $ getHead doc
+  Just doc' <- webViewGetDomDocument webView
+  doc <- liftIO $ castToHTMLDocument doc'
+  Just headElement <- getHead doc'
+--  headElement <- liftIO $ castToHTMLDocument headElement'
   attachWidget headElement webView h
   Just body <- getBody doc
   attachWidget body webView b
 
 mainWidgetWithCss :: ByteString -> Widget Spider (Gui Spider (WithWebView SpiderHost) (HostFrame Spider)) () -> IO ()
 mainWidgetWithCss css w = runWebGUI $ \webView -> do
-  Just doc <- liftM (fmap castToHTMLDocument) $ webViewGetDomDocument webView
-  Just headElement <- liftM (fmap castToHTMLElement) $ getHead doc
+  Just doc' <- webViewGetDomDocument webView
+  doc <- liftIO $ castToHTMLDocument doc'
+  Just headElement <- getHead doc'
+--  headElement <- liftIO $ castToHTMLDocument headElement'
   setInnerHTML headElement . Just $ "<style>" <> T.unpack (decodeUtf8 css) <> "</style>" --TODO: Fix this
   Just body <- getBody doc
   attachWidget body webView w
@@ -249,7 +254,8 @@ runWithWebView = runReaderT . unWithWebView
 
 attachWidget :: (IsHTMLElement e) => e -> WebView -> Widget Spider (Gui Spider (WithWebView SpiderHost) (HostFrame Spider)) a -> IO a
 attachWidget rootElement wv w = runSpiderHost $ flip runWithWebView wv $ do --TODO: It seems to re-run this handler if the URL changes, even if it's only the fragment
-  Just doc <- liftM (fmap castToHTMLDocument) $ getOwnerDocument rootElement
+  Just doc1 <- getOwnerDocument rootElement
+  doc <- liftIO $ castToHTMLDocument doc1
   frames <- liftIO newChan
   rec let guiEnv = GuiEnv doc (writeChan frames . runSpiderHost . flip runWithWebView wv) runWithActions wv :: GuiEnv Spider (WithWebView SpiderHost)
           runWithActions dm = do

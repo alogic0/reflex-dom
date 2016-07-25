@@ -81,7 +81,7 @@ buildEmptyElementNS mns elementTag attrs = do
     Just ns -> createElementNS doc (Just ns) (Just elementTag)
   addAttributes attrs e
   _ <- appendChild p $ Just e
-  return $ castToElement e
+  liftIO $ castToElement e
 
 buildEmptyElement :: (MonadWidget t m, Attributes m attrs) => String -> attrs -> m Element
 buildEmptyElement = buildEmptyElementNS Nothing

@@ -141,7 +141,7 @@ xmlHttpRequestGetResponse xhr = do
   mr <- getResponse xhr
   rt <- xmlHttpRequestGetResponseType xhr
   case rt of
-       Just XhrResponseType_Blob -> return $ fmap (XhrResponseBody_Blob . castToBlob) mr
+       Just XhrResponseType_Blob -> traverse ((XhrResponseBody_Blob <$>) . castToBlob) mr
        Just XhrResponseType_Text -> fmap (Just . XhrResponseBody_Text) $ xmlHttpRequestGetStatusText xhr
        Just XhrResponseType_Default -> fmap (Just . XhrResponseBody_Text) $ xmlHttpRequestGetStatusText xhr
        Just XhrResponseType_ArrayBuffer -> case (fmap unGObject mr) of

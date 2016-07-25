@@ -54,7 +54,8 @@ instance Reflex t => Default (TextInputConfig t) where
 -- | Create an input whose value is a string.  By default, the "type" attribute is set to "text", but it can be changed using the _textInputConfig_inputType field.  Note that only types for which the value is always a string will work - types whose value may be null will not work properly with this widget.
 textInput :: MonadWidget t m => TextInputConfig t -> m (TextInput t)
 textInput (TextInputConfig inputType initial eSetValue dAttrs) = do
-  e <- liftM castToHTMLInputElement $ buildEmptyElement "input" =<< mapDyn (Map.insert "type" inputType) dAttrs
+  e' <- buildEmptyElement "input" =<< mapDyn (Map.insert "type" inputType) dAttrs
+  e <- liftIO $ castToHTMLInputElement e'
   Input.setValue e $ Just initial
   performEvent_ $ fmap (Input.setValue e . Just) eSetValue
   eChange <- wrapDomEvent e (`on` input) $ fromMaybe "" <$> Input.getValue e
@@ -98,7 +99,8 @@ data TextArea t
 
 textArea :: MonadWidget t m => TextAreaConfig t -> m (TextArea t)
 textArea (TextAreaConfig initial eSet attrs) = do
-  e <- liftM castToHTMLTextAreaElement $ buildEmptyElement "textarea" attrs
+  e' <- buildEmptyElement "textarea" attrs
+  e <- liftIO $ castToHTMLTextAreaElement e'
   TextArea.setValue e $ Just initial
   postGui <- askPostGui
   runWithActions <- askRunWithActions
@@ -136,7 +138,8 @@ data Checkbox t
 checkbox :: MonadWidget t m => Bool -> CheckboxConfig t -> m (Checkbox t)
 checkbox checked config = do
   attrs <- mapDyn (\c -> Map.insert "type" "checkbox" $ (if checked then Map.insert "checked" "checked" else Map.delete "checked") c) (_checkboxConfig_attributes config)
-  e <- liftM castToHTMLInputElement $ buildEmptyElement "input" attrs
+  e' <- buildEmptyElement "input" attrs
+  e <- liftIO $ castToHTMLInputElement e'
   eClick <- wrapDomEvent e (`on` click) $ Input.getChecked e
   performEvent_ $ fmap (\v -> Input.setChecked e $! v) $ _checkboxConfig_setValue config
   dValue <- holdDyn checked $ leftmost [_checkboxConfig_setValue config, eClick]
@@ -144,7 +147,8 @@ checkbox checked config = do
 
 checkboxView :: MonadWidget t m => Dynamic t (Map String String) -> Dynamic t Bool -> m (Event t Bool)
 checkboxView dAttrs dValue = do
-  e <- liftM castToHTMLInputElement $ buildEmptyElement "input" =<< mapDyn (Map.insert "type" "checkbox") dAttrs
+  e' <- buildEmptyElement "input" =<< mapDyn (Map.insert "type" "checkbox") dAttrs
+  e <- liftIO $ castToHTMLInputElement e'
   eClicked <- wrapDomEvent e (`on` click) $ do
     preventDefault
     Input.getChecked e
@@ -169,7 +173,8 @@ instance Reflex t => Default (FileInputConfig t) where
 
 fileInput :: MonadWidget t m => FileInputConfig t -> m (FileInput t)
 fileInput (FileInputConfig dAttrs) = do
-  e <- liftM castToHTMLInputElement $ buildEmptyElement "input" =<< mapDyn (Map.insert "type" "file") dAttrs
+  e' <- buildEmptyElement "input" =<< mapDyn (Map.insert "type" "file") dAttrs
+  e <- liftIO $ castToHTMLInputElement e'
   eChange <- wrapDomEvent e (flip on change) $ do
     Just files <- getFiles e
     len <- FileList.getLength files
@@ -207,7 +212,7 @@ dropdown k0 options (DropdownConfig setK attrs) = do
   (eRaw, _) <- elDynAttr' "select" attrs $ listWithKey indexedOptions $ \(ix, k) v -> do
     optionAttrs <- mapDyn (\dk -> "value" =: show ix <> if dk == k then "selected" =: "selected" else mempty) defaultKey
     elDynAttr "option" optionAttrs $ dynText v
-  let e = castToHTMLSelectElement $ _el_element eRaw
+  e <- liftIO $ castToHTMLSelectElement $ _el_element eRaw
   performEvent_ $ fmap (Select.setValue e . Just . show) $ attachDynWithMaybe (flip B.lookupR) ixKeys setK
   eChange <- attachDynWith (\ks s -> join $ B.lookup <$> join (readMaybe <$> s) <*> pure ks) ixKeys <$> (wrapDomEvent e (`on` change) $ Select.getValue e)
   let readKey keys mk = fromMaybe k0 $ do
